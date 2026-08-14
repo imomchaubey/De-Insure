@@ -282,6 +282,48 @@ body {
   color: #ffffff;
 }
 
+.mobile-hamburger-btn {
+  display: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.45rem;
+  border-radius: 10px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .mobile-hamburger-btn {
+    display: flex;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 260px;
+    height: 100vh;
+    z-index: 9999;
+    transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.4);
+  }
+
+  .sidebar.mobile-open {
+    left: 0;
+  }
+
+  .main-wrapper {
+    margin-left: 0;
+    padding: 1.25rem 1rem 5rem 1rem;
+  }
+
+  .grid-2col, .telemetry-kpi-row, .alerts-kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* ==========================================================================
    MAIN CONTENT & HEADER TOPBAR
    ========================================================================== */
