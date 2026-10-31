@@ -2172,5 +2172,76 @@ html, body, #root, .app-container {
   to { transform: scale(1.05); }
 }
 
+/* Theme-Aware Map Warning Overlay System */
+.map-warning-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1001;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 22px;
+  padding: 1.6rem 2.25rem;
+  text-align: center;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.16);
+  max-width: 88%;
+  width: 360px;
+  backdrop-filter: blur(12px);
+  animation: fadeInDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
+[data-theme="dark"] .map-warning-overlay {
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
 
+.warning-overlay-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.85rem auto;
+}
+
+.warning-overlay-icon.amber {
+  background: rgba(245, 158, 11, 0.14);
+  color: #f59e0b;
+}
+
+.warning-overlay-icon.red {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+}
+
+.warning-overlay-title {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.warning-overlay-title.amber {
+  color: #d97706;
+}
+
+[data-theme="dark"] .warning-overlay-title.amber {
+  color: #f59e0b;
+}
+
+.warning-overlay-title.red {
+  color: #dc2626;
+}
+
+[data-theme="dark"] .warning-overlay-title.red {
+  color: #ef4444;
+}
+
+.warning-overlay-desc {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin: 0;
+  line-height: 1.45;
+  font-weight: 500;
+}

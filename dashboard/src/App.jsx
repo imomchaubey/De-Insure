@@ -31,29 +31,26 @@ const generateSparkline = (data, width = 100, height = 30) => {
   }).join(' ')
 }
 
+// Safe Number Formatting Helper to prevent TypeError on null/undefined
+const safeFixed = (val, decimals = 1, fallback = '--') => {
+  if (val === null || val === undefined || isNaN(Number(val))) return fallback
+  return Number(val).toFixed(decimals)
+}
+
 function App() {
   const [theme, setTheme] = useState('light')
   const [activeTab, setActiveTab] = useState('Dashboard')
-  const [telemetry, setTelemetry] = useState({ temp: 4.6, hum: 57.7, battery: 98 })
+  const [telemetry, setTelemetry] = useState({ temp: null, hum: null, battery: null })
   const [shelfLife, setShelfLife] = useState(0.916)
   const [contractState, setContractState] = useState('Transit')
-  const [location, setLocation] = useState({ lat: 30.3528, lng: 76.3598 }) // Real Hardware Location
-  const [locationHistory, setLocationHistory] = useState([
-    [30.3528, 76.3598]
-  ])
+  const [location, setLocation] = useState({ lat: null, lng: null })
+  const [locationHistory, setLocationHistory] = useState([])
   const [blockchainInfo, setBlockchainInfo] = useState({ connected: true, address: '0x5FbDB2315678afecb367f032d93F642f64180aa3' })
-  const [telemetryLogs, setTelemetryLogs] = useState([
-    { id: 101, time: '12:58:05 PM', date: new Date().toLocaleDateString(), temp: 22.5, hum: 83.6, battery: 97, lat: 30.3528, lng: 76.3598, sig: '304402208765d1fd80dc8a3fe9e46f0693e9d4df...', status: 'Thermal Spike' },
-    { id: 102, time: '12:57:55 PM', date: new Date().toLocaleDateString(), temp: 22.4, hum: 83.5, battery: 97, lat: 30.3528, lng: 76.3598, sig: '304402208765d1fd80dc8a3fe9e46f0693e9d4df...', status: 'Thermal Spike' },
-    { id: 103, time: '12:57:45 PM', date: new Date().toLocaleDateString(), temp: 4.8, hum: 58.2, battery: 98, lat: 30.3528, lng: 76.3598, sig: '304402208765d1fd80dc8a3fe9e46f0693e9d4df...', status: 'Optimal' },
-    { id: 104, time: '12:57:35 PM', date: new Date().toLocaleDateString(), temp: 4.6, hum: 57.7, battery: 98, lat: 30.3528, lng: 76.3598, sig: '304402208765d1fd80dc8a3fe9e46f0693e9d4df...', status: 'Optimal' }
-  ])
+  const [telemetryLogs, setTelemetryLogs] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
 
   const [alerts, setAlerts] = useState([
-    { id: 1, title: 'Thermal Threshold Exceeded', detail: 'Temperature exceeded 15.0°C safety baseline (Current: 22.4°C)', time: '23:36:12', level: 'Critical', read: false },
-    { id: 2, title: 'GPS Hardware Lock Acquired', detail: '3D Satellite Fix active at 30.3528° N, 76.3598° E', time: '23:32:05', level: 'Info', read: false },
-    { id: 3, title: 'Oracle Spoilage Vote Cast', detail: 'On-chain consensus submitted transaction 0x934c...', time: '23:27:19', level: 'Warning', read: true }
+    { id: 1, title: 'System Active', detail: 'De-Insure Framework initializing live AWS IoT stream...', time: new Date().toLocaleTimeString(), level: 'Info', read: false }
   ])
   const [activeToast, setActiveToast] = useState(null)
   const [lastToastTime, setLastToastTime] = useState(0)
@@ -176,13 +173,13 @@ function App() {
           const isOnline = data.online === true
           setDeviceOnline(isOnline)
 
-          if (isOnline) {
+          if (isOnline && data.temp !== null && data.temp !== undefined) {
             const newTemp = Number(data.temp)
             const newHum = Number(data.hum)
-            const newBattery = Number(data.battery !== undefined ? data.battery : 98)
-            const newLat = Number(data.lat || 30.3528)
-            const newLng = Number(data.lng || 76.3598)
-            const newSig = data.sig || '0x30440220...'
+            const newBattery = Number(data.battery !== undefined && data.battery !== null ? data.battery : 98)
+            const newLat = data.lat !== undefined && data.lat !== null ? Number(data.lat) : null
+            const newLng = data.lng !== undefined && data.lng !== null ? Number(data.lng) : null
+            const newSig = data.sig || '0x'
 
             setTelemetry({ 
               temp: newTemp, 
@@ -195,13 +192,15 @@ function App() {
             setBatteryHistory(prev => [...prev.slice(-15), newBattery])
 
             setLocation({ lat: newLat, lng: newLng })
-            setLocationHistory(prev => {
-              const last = prev[prev.length - 1]
-              if (!last || Math.abs(last[0] - newLat) > 0.000001 || Math.abs(last[1] - newLng) > 0.000001) {
-                return [...prev, [newLat, newLng]]
-              }
-              return prev
-            })
+            if (newLat !== null && newLng !== null) {
+              setLocationHistory(prev => {
+                const last = prev[prev.length - 1]
+                if (!last || Math.abs(last[0] - newLat) > 0.000001 || Math.abs(last[1] - newLng) > 0.000001) {
+                  return [...prev, [newLat, newLng]]
+                }
+                return prev
+              })
+            }
 
             // Trigger Live Toast Notification on Anomaly Detection (Cooldown 10s)
             const nowMs = Date.now()
@@ -211,7 +210,7 @@ function App() {
                 const toastObj = {
                   id: nowMs,
                   title: 'Thermal Spike Alert',
-                  body: `ESP32 Physical Sensor recorded ${newTemp.toFixed(1)}°C (exceeds 15.0°C threshold)`,
+                  body: `ESP32 Physical Sensor recorded ${safeFixed(newTemp, 1)}°C (exceeds 15.0°C threshold)`,
                   level: 'critical'
                 }
                 setActiveToast(toastObj)
@@ -220,7 +219,7 @@ function App() {
               setAlerts(prev => [{
                 id: nowMs,
                 title: 'Thermal Spike Detected',
-                detail: `Sensor reported ${newTemp.toFixed(1)}°C (>15.0°C threshold). Spoilage model active.`,
+                detail: `Sensor reported ${safeFixed(newTemp, 1)}°C (>15.0°C threshold). Spoilage model active.`,
                 time: new Date().toLocaleTimeString(),
                 level: 'Critical',
                 read: false
@@ -258,12 +257,21 @@ function App() {
                 return [newEntry, ...prev.slice(0, 99)]
               })
             }
+          } else {
+            // Device Offline: Clear last known telemetry state and GPS location as requested
+            setDeviceOnline(false)
+            setTelemetry({ temp: null, hum: null, battery: null })
+            setLocation({ lat: null, lng: null })
           }
         } else {
           setDeviceOnline(false)
+          setTelemetry({ temp: null, hum: null, battery: null })
+          setLocation({ lat: null, lng: null })
         }
       } catch (err) {
         setDeviceOnline(false)
+        setTelemetry({ temp: null, hum: null, battery: null })
+        setLocation({ lat: null, lng: null })
       }
     }
 
@@ -644,7 +652,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                     <span>Current Sensor Reading:</span>
-                    <strong style={{ color: telemetry.temp > 15 ? '#ef4444' : '#10b981' }}>{telemetry.temp.toFixed(1)}°C ({telemetry.temp > 15 ? 'CRITICAL EXCURSION' : 'OPTIMAL'})</strong>
+                    <strong style={{ color: (telemetry.temp || 0) > 15 ? '#ef4444' : '#10b981' }}>{safeFixed(telemetry.temp, 1)}°C ({(telemetry.temp || 0) > 15 ? 'CRITICAL EXCURSION' : 'OPTIMAL'})</strong>
                   </div>
                 </div>
               </div>
@@ -995,15 +1003,15 @@ function App() {
                             {log.time}
                           </td>
                           <td style={{ color: 'var(--text-secondary)' }}>{log.date}</td>
-                          <td style={{ fontWeight: 800, color: log.temp > 15 ? '#ef4444' : 'var(--text-main)' }}>
-                            {log.temp.toFixed(1)}°C
+                          <td style={{ fontWeight: 800, color: (log.temp || 0) > 15 ? '#ef4444' : 'var(--text-main)' }}>
+                            {safeFixed(log.temp, 1)}°C
                           </td>
-                          <td>{log.hum.toFixed(1)}%</td>
+                          <td>{safeFixed(log.hum, 1)}%</td>
                           <td>
-                            <span style={{ fontWeight: 600 }}>{log.battery}%</span>
+                            <span style={{ fontWeight: 600 }}>{log.battery !== null ? `${log.battery}%` : '--'}</span>
                           </td>
                           <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600 }}>
-                            {log.lat.toFixed(4)}° N, {log.lng.toFixed(4)}° E
+                            {log.lat !== null && log.lng !== null ? `${safeFixed(log.lat, 4)}° N, ${safeFixed(log.lng, 4)}° E` : 'GPS Unavailable'}
                           </td>
                           <td>
                             <div 
@@ -1039,14 +1047,14 @@ function App() {
                     <span className={`status-dot ${!deviceOnline ? 'offline' : ''}`}></span>
                     <span>{deviceOnline ? 'ESP32 Node Online' : 'Device Offline'}</span>
                   </div>
-                  <span className={`hero-status-pill ${telemetry.temp > 15 ? 'danger' : 'optimal'}`}>
-                    {telemetry.temp > 15 ? '🔥 Thermal Spike' : '❄️ Optimal Cool'}
+                  <span className={`hero-status-pill ${(telemetry.temp || 0) > 15 ? 'danger' : 'optimal'}`}>
+                    {(telemetry.temp || 0) > 15 ? '🔥 Thermal Spike' : '❄️ Optimal Cool'}
                   </span>
                 </div>
 
                 <div className="hero-main-temp">
                   <div className="hero-temp-value">
-                    {deviceOnline ? telemetry.temp.toFixed(1) : '--'}
+                    {deviceOnline && telemetry.temp !== null ? safeFixed(telemetry.temp, 1) : '--'}
                     <span className="hero-unit">°C</span>
                   </div>
                   <div className="hero-temp-label">Live Cold-Chain Telemetry</div>
@@ -1056,12 +1064,12 @@ function App() {
                 <div className="hero-bottom-stats">
                   <div className="hero-stat-item">
                     <span className="hero-stat-lbl">Humidity</span>
-                    <span className="hero-stat-val">{deviceOnline ? `${telemetry.hum.toFixed(1)}%` : '--'}</span>
+                    <span className="hero-stat-val">{deviceOnline && telemetry.hum !== null ? `${safeFixed(telemetry.hum, 1)}%` : '--'}</span>
                   </div>
                   <div className="hero-stat-divider"></div>
                   <div className="hero-stat-item">
                     <span className="hero-stat-lbl">Battery</span>
-                    <span className="hero-stat-val">{deviceOnline ? `${telemetry.battery}%` : '--'}</span>
+                    <span className="hero-stat-val">{deviceOnline && telemetry.battery !== null ? `${telemetry.battery}%` : '--'}</span>
                   </div>
                   <div className="hero-stat-divider"></div>
                   <div className="hero-stat-item">
@@ -1084,8 +1092,8 @@ function App() {
                   </div>
                   <div className="stat-title">Temperature</div>
                 </div>
-                <div className="stat-value" style={{ color: deviceOnline ? 'var(--text-main)' : 'var(--text-muted)' }}>
-                  {deviceOnline ? `${telemetry.temp.toFixed(1)}°C` : '--°C'}
+                <div className="stat-value" style={{ color: deviceOnline && telemetry.temp !== null ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                  {deviceOnline && telemetry.temp !== null ? `${safeFixed(telemetry.temp, 1)}°C` : '--°C'}
                 </div>
                 <div className="stat-footer">
                   <div className="stat-subtitle">Status<br/><strong>{deviceOnline ? 'Live Sensor Data' : 'Device Offline'}</strong></div>
@@ -1105,8 +1113,8 @@ function App() {
                   </div>
                   <div className="stat-title">Humidity</div>
                 </div>
-                <div className="stat-value" style={{ color: deviceOnline ? 'var(--text-main)' : 'var(--text-muted)' }}>
-                  {deviceOnline ? `${telemetry.hum.toFixed(1)}%` : '--%'}
+                <div className="stat-value" style={{ color: deviceOnline && telemetry.hum !== null ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                  {deviceOnline && telemetry.hum !== null ? `${safeFixed(telemetry.hum, 1)}%` : '--%'}
                 </div>
                 <div className="stat-footer">
                   <div className="stat-subtitle">Status<br/><strong>{deviceOnline ? 'Live Sensor Data' : 'Device Offline'}</strong></div>
@@ -1296,25 +1304,67 @@ function App() {
               </div>
 
               <div className="map-container" style={{ height: 380, position: 'relative', overflow: 'hidden', borderRadius: '16px' }}>
-                {/* Floating Location Overlay Card (Moved down to uncover + and - zoom controls) */}
+                {/* Floating Location Overlay Card */}
                 <div className="map-overlay-card" style={{ position: 'absolute', top: '5.25rem', left: '0.85rem', zIndex: 1000, background: 'var(--bg-card)', padding: '0.85rem 1.15rem', borderRadius: '14px', border: '1px solid var(--border-color)', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
                   <h5 style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase' }}>ESP32 Physical Device Location</h5>
-                  <p style={{ fontFamily: 'monospace', fontSize: '0.88rem', fontWeight: 'bold', margin: '0.1rem 0' }}>Lat: {location.lat.toFixed(4)}° N</p>
-                  <p style={{ fontFamily: 'monospace', fontSize: '0.88rem', fontWeight: 'bold', margin: '0.1rem 0' }}>Lng: {location.lng.toFixed(4)}° E</p>
-                  <div style={{ fontSize: '0.7rem', color: deviceOnline ? 'var(--accent-green)' : '#ef4444', fontWeight: 600, marginTop: '0.35rem' }}>
-                    {deviceOnline ? 'Live India GPS Node • Updates Every 1s' : 'Hardware Offline (Waiting for AWS Stream)'}
+                  <p style={{ fontFamily: 'monospace', fontSize: '0.88rem', fontWeight: 'bold', margin: '0.1rem 0' }}>
+                    Lat: {deviceOnline && location.lat !== null ? `${safeFixed(location.lat, 4)}° N` : '--'}
+                  </p>
+                  <p style={{ fontFamily: 'monospace', fontSize: '0.88rem', fontWeight: 'bold', margin: '0.1rem 0' }}>
+                    Lng: {deviceOnline && location.lng !== null ? `${safeFixed(location.lng, 4)}° E` : '--'}
+                  </p>
+                  <div style={{ fontSize: '0.7rem', color: deviceOnline && location.lat !== null ? 'var(--accent-green)' : '#ef4444', fontWeight: 600, marginTop: '0.35rem' }}>
+                    {deviceOnline && location.lat !== null ? 'Live GPS Satellite Fix Active' : 'GPS Unavailable / Device Disconnected'}
                   </div>
                 </div>
+
+                {/* GPS NOT CONNECTED WARNING OVERLAY (DEVICE ONLINE BUT NO GPS FIX) */}
+                {deviceOnline && location.lat === null && (
+                  <div className="map-warning-overlay">
+                    <div className="warning-overlay-icon amber">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                      </svg>
+                    </div>
+                    <h4 className="warning-overlay-title amber">
+                      GPS is not connected, please wait...
+                    </h4>
+                    <p className="warning-overlay-desc">
+                      ESP32 device is online. Searching for 3D GPS satellite lock.
+                    </p>
+                  </div>
+                )}
+
+                {/* DEVICE OFFLINE WARNING OVERLAY */}
+                {!deviceOnline && (
+                  <div className="map-warning-overlay">
+                    <div className="warning-overlay-icon red">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                        <path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/>
+                        <path d="M5 12.55a10.94 10.94 0 015.17-2.69"/>
+                      </svg>
+                    </div>
+                    <h4 className="warning-overlay-title red">
+                      Hardware Device Offline
+                    </h4>
+                    <p className="warning-overlay-desc">
+                      Waiting for hardware stream from AWS IoT Core...
+                    </p>
+                  </div>
+                )}
 
                 {/* REAL-WORLD MAP CONTAINER CENTERED IN INDIA */}
                 <MapContainer 
                   key="main-dashboard-map"
-                  center={currentPos} 
-                  zoom={10} 
+                  center={deviceOnline && location.lat !== null ? [location.lat, location.lng] : [20.5937, 78.9629]} 
+                  zoom={deviceOnline && location.lat !== null ? 10 : 5} 
                   scrollWheelZoom={true}
                   style={{ width: '100%', height: '380px', borderRadius: '16px', zIndex: 1 }}
                 >
-                  <MapRecenter center={currentPos} />
+                  <MapRecenter center={deviceOnline && location.lat !== null ? [location.lat, location.lng] : [20.5937, 78.9629]} />
                   
                   {/* High-End CartoDB Professional Tile Layer */}
                   <TileLayer
@@ -1325,16 +1375,18 @@ function App() {
                     }
                   />
 
-                  {/* ONLY ONE SINGLE PHYSICAL ESP32 MARKER */}
-                  <Marker position={currentPos} icon={cargoIcon}>
-                    <Popup>
-                      <strong>Physical ESP32 Cargo Unit #1 (India)</strong><br/>
-                      Temp: {telemetry.temp.toFixed(1)}°C<br/>
-                      Humidity: {telemetry.hum.toFixed(1)}%<br/>
-                      Battery: {telemetry.battery}%<br/>
-                      Lat: {location.lat.toFixed(4)}° N, Lng: {location.lng.toFixed(4)}° E
-                    </Popup>
-                  </Marker>
+                  {/* ONLY RENDER MARKER WHEN DEVICE IS ONLINE AND GPS LOCATION IS VALID */}
+                  {deviceOnline && location.lat !== null && location.lng !== null && (
+                    <Marker position={[location.lat, location.lng]} icon={cargoIcon}>
+                      <Popup>
+                        <strong>Physical ESP32 Cargo Unit #1 (India)</strong><br/>
+                        Temp: {safeFixed(telemetry.temp, 1)}°C<br/>
+                        Humidity: {safeFixed(telemetry.hum, 1)}%<br/>
+                        Battery: {telemetry.battery || '--'}%<br/>
+                        Lat: {safeFixed(location.lat, 4)}° N, Lng: {safeFixed(location.lng, 4)}° E
+                      </Popup>
+                    </Marker>
+                  )}
 
                   {/* Live Device Movement Track Line */}
                   <Polyline 

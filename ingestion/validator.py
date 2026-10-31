@@ -86,7 +86,10 @@ def validate_telemetry_packet(raw_payload):
         try:
             f_lat = float(data["lat"])
             f_lng = float(data["lng"])
-            if -90.0 <= f_lat <= 90.0 and -180.0 <= f_lng <= 180.0:
+            # Reject legacy hardcoded firmware fallbacks (Mumbai 19.076° N, 72.8777° E & 30.3528° N, 76.3598° E)
+            if abs(f_lat - 19.076) < 0.001 or abs(f_lng - 72.8777) < 0.001 or abs(f_lat - 30.3528) < 0.001 or abs(f_lng - 76.3598) < 0.001 or f_lat == 0.0 or f_lng == 0.0:
+                gps_status = "GPS_UNAVAILABLE"
+            elif -90.0 <= f_lat <= 90.0 and -180.0 <= f_lng <= 180.0:
                 lat = f_lat
                 lng = f_lng
             else:

@@ -7,6 +7,19 @@
 [![Solidity](https://img.shields.io/badge/Solidity-%5E0.8.20-363636.svg)](https://soliditylang.org/)
 [![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://react.dev/)
 
+
+## 👥 Capstone Team & Mentorship
+
+**Mentor:** 
+* Surjit Singh
+
+**Student Team:**
+* Ujjwala Kumari Thakur
+* Om Prakash Chaubey
+* Keshav Kumar Karn
+* Aadar Mishra
+* Cyrush Kushwaha
+
 **De-Insure** is an enterprise-grade, hardware-to-blockchain parametric insurance ecosystem designed to protect temperature-sensitive cargo (pharmaceuticals, vaccines, perishable foods) during transit. 
 
 By combining real-time IoT physical telemetry, fail-closed sensor policies, hardware ECDSA cryptographic signatures, multi-epoch PyTorch ML spoilage prediction models, and decentralized 2-out-of-3 Oracle consensus, De-Insure automates instant claim payouts (<2 seconds) directly to cargo owners without manual insurance adjuster delays.
