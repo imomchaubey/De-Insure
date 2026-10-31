@@ -10,8 +10,8 @@
 
 ## 👥 Capstone Team & Mentorship
 
-**Mentor:** 
-* Surjit Singh
+**Supervisor:** 
+* Dr. Surjit Singh, Department of Computer Science & Engineering, Thapar Institute of Engineering & Technology, Patiala, India
 
 **Student Team:**
 * Ujjwala Kumari Thakur
